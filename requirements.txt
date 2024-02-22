@@ -1,0 +1,9 @@
+httpx
+tenacity
+beautifulsoup4
+
+pandas
+pyarrow
+
+gspread
+SQLAlchemy
