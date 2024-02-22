@@ -10,8 +10,8 @@ from gspread.exceptions import WorksheetNotFound
 
 from src import logger
 from src import inventory
+from src import parser
 from src.config import settings
-from src.config import loader
 from src.db import utils
 
 def init_google_sheets() -> Spreadsheet:
@@ -30,7 +30,7 @@ class SheetWriter:
         self,
         data: pandas.DataFrame,
         wb: Spreadsheet,
-        sheet_config: loader.SheetConfig
+        sheet_config: parser.SheetConfig
     ) -> None:
         self.data = data
         self.columns = self.data.columns
