@@ -1,0 +1,48 @@
+{
+    "trackers": [
+        {
+            "url": "https://776bc.com",
+            "parser": "HTMLGloboParser"
+        },
+        {
+            "url": "https://budgysmuggler.com.au",
+            "parser": "JSONParser"
+        },
+        {
+            "url": "https://www.slixaustralia.com.au/",
+            "parser": "JSONParser"
+        },
+        {
+            "url": "https://www.impisportswear.com.au/",
+            "parser": "none"
+        },
+        {
+            "url": "https://jlathletics.com/",
+            "parser": "HTMLSpuritParser"
+        },
+        {
+            "url": "https://nimbleactivewear.com/",
+            "parser": "JSONParser"
+        },
+        {
+            "url": "https://www.dharmabums.com.au/",
+            "parser": "JSONParser"
+        },
+        {
+            "url": "https://au.ryderwear.com/",
+            "parser": "HTMLSwymParser"
+        },
+        {
+            "url": "https://musclenation.org/",
+            "parser": "HTMLSwymParser"
+        },
+        {
+            "url": "https://2xu.com/",
+            "parser": "HTMLSwymParser"
+        },
+        {
+            "url": "https://www.volaresports.com/",
+            "parser": "JSONParser"
+        }
+    ]
+}
