@@ -123,27 +123,14 @@ LOGGING_DICT_CONFIG = {
             "level": "DEBUG",
             "handlers": [
                 "stdout",
-                # "file"
+                "file"
             ]
         },
-        "general": {},
-        "httpx": {
-            "handlers": []
-        },
-        "tenacity": {},
-        "sqlalchemy": {}
     }
 }
 
 
-class LoggerNotInConfig(Exception):
-    ...
-
-
 def get_logger(name: str) -> logging.Logger:
-    if name not in LOGGING_DICT_CONFIG["loggers"].keys():
-        raise LoggerNotInConfig
-
     return logging.getLogger(name=name)
 
 
@@ -153,7 +140,6 @@ def init_logger() -> None:
 
 def main() -> None:
     init_logger()
-
 
 
 if __name__ == "__main__":
