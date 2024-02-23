@@ -39,7 +39,7 @@ REQUIRED_INVENTORY_COLUMNS = [
 
 class TrackerConfig(NamedTuple):
     url: str
-    parser: str = "json"
+    parser: str = "JSONParser"
 
     @property
     def base_url(self) -> str:
