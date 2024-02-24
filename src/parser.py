@@ -352,7 +352,9 @@ class HTMLGloboParser(HTMLParser):
 
         for i in str(script.text).split(";"):
             if ("GloboPreorderParams.product.variants" in i
-                and "inventory_policy" not in i):
+                and "inventory_policy" not in i
+                and "metafields" not in i
+            ):
                 raw_variants.append(i)
 
         return raw_variants
