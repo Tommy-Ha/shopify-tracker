@@ -11,8 +11,7 @@ from typing import runtime_checkable
 from typing import Any
 
 
-
-REQUIRED_PRODUCT_COLUMNS = [
+_REQUIRED_PRODUCT_COLUMNS = [
     "id",
     "title",
     "vendor",
