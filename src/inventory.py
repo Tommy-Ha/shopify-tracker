@@ -8,15 +8,6 @@ from src.config import settings
 from src.db import utils
 
 
-def combine_inventory_data(engine: Engine) -> pandas.DataFrame:
-    combined_inventory = utils.execute_select_statement(
-        engine=engine,
-        statement=settings.COMBINED_INVENTORY_STMT
-    )
-
-    return pandas.DataFrame(data=combined_inventory)
-
-
 def calculate_item_sold_by_variants(
     group: pandas.DataFrame
 ) -> pandas.DataFrame:
@@ -47,7 +38,13 @@ def compute_inventory(
     engine: Engine
 ) -> pandas.DataFrame:
 
-    inventory_data = combine_inventory_data(engine)
+    utils.LocalSession.configure(bind=engine)
+
+    inventories = utils.execute_select_statement(
+        session=utils.LocalSession(),
+        statement=settings.COMBINED_INVENTORY_STMT
+    )
+    inventory_data = pandas.DataFrame(data=inventories)
 
     def get_head(
         group: pandas.DataFrame, n: int=1
@@ -94,7 +91,8 @@ def compute_inventory(
         "first_updated",
         "last_updated",
         "product_title",
-        "product_url",
+        # "product_url",
+        "product_type",
         "variant_title",
         "initial_amount",
         "item_sold"
@@ -110,7 +108,17 @@ def main() -> None:
     )
 
     df = compute_inventory(engine)
-    print(df)
+    values=[
+        [
+            "First Updated:",
+            df["first_updated"].min()
+        ],
+        [
+            "Last Updated:",
+            df["last_updated"].max()
+        ]
+    ]
+    print(values)
 
 
 if __name__ == "__main__":
