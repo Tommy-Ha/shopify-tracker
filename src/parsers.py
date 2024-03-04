@@ -61,52 +61,6 @@ class Product(NamedTuple):
         return self.url + ".json"
 
 
-class SheetConfig(NamedTuple):
-    name: str
-    position: int
-    width: int = 26
-    height: int = 1000
-    start_cell: str = "A1"
-
-    @property
-    def ranges(self) -> str:
-        repeat = math.ceil(self.width/26)
-        chars = list(string.ascii_uppercase)
-
-        if repeat == 1:
-            last_char = chars[self.width-1]
-        
-        else:
-            hits = 0
-            values = []
-
-            for i, c in enumerate(chars * (repeat-1), start=0):
-                if i % 26 == 0:
-                    hits += 1
-
-                values.append(chars[hits-1] + c)
-
-            last_char = values[self.width-1-26]
-
-        return str(
-            self.start_cell
-            + ":"
-            + str(last_char)
-            + str(self.height)
-        )
-
-
-def load_sheet_configs() -> list[SheetConfig]:
-    tracker_configs = load_tracker_configs()
-
-    return [
-        SheetConfig(
-            name=tcfg.name,
-            position=i
-        )
-        for i, tcfg in enumerate(tracker_configs)
-    ]
-
 def filter_dict_items(
     item: dict, includes: list[str]
 ) -> dict:
