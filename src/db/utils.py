@@ -1,7 +1,9 @@
 from __future__ import annotations
 
 from sqlalchemy.orm import Session
+from sqlalchemy.orm import sessionmaker
 from sqlalchemy import MetaData
+from sqlalchemy import Label
 from sqlalchemy import Engine, create_engine
 from sqlalchemy import select, table, column
 from sqlalchemy import text
@@ -9,6 +11,9 @@ from sqlalchemy import text
 from sqlalchemy.dialects.sqlite import insert as sqlite_upsert
 
 import pathlib
+
+
+LocalSession = sessionmaker()
 
 
 def init_database(
@@ -26,8 +31,8 @@ def get_engine(url: str, **kwargs: object) -> Engine:
     return engine
 
 
-def insert_one(engine: Engine, value: dict, instance) -> None:
-    with Session(engine) as session:
+def insert_one(session: Session, value: dict, instance) -> None:
+    with session:
         values_to_insert = instance(**value)
 
         session.add(values_to_insert)
@@ -35,9 +40,9 @@ def insert_one(engine: Engine, value: dict, instance) -> None:
 
 
 def insert_many(
-    engine: Engine, values: list[dict], instance
+    session: Session, values: list[dict], instance
 ) -> None:
-    with Session(engine) as session:
+    with session:
         values_to_insert = [instance(**item) for item in values]
 
         session.add_all(values_to_insert)
@@ -45,9 +50,9 @@ def insert_many(
 
 
 def upsert_one(
-    engine: Engine, value: dict, instance
+    session: Session, value: dict, instance
 ) -> None:
-    with Session(engine) as session:
+    with session:
         primary_keys = instance.__table__.primary_key.columns.keys()
         columns = [
             c
@@ -69,9 +74,9 @@ def upsert_one(
 
 
 def upsert_many(
-    engine: Engine, values: list[dict], instance
+    session: Session, values: list[dict], instance
 ) -> None:
-    with Session(engine) as session:
+    with session:
         primary_keys = instance.__table__.primary_key.columns.keys()
         columns = [
             c
@@ -93,16 +98,16 @@ def upsert_many(
 
 
 def select_by_column_names(
-    engine: Engine,
+    session: Session,
     table_name: str,
     colnames: list[str],
     aliases: list[str] | None = None,
 ) -> list[dict]:
-    with Session(engine) as session:
+    with session:
         if aliases is None:
             aliases = colnames
 
-        cols = [
+        cols: list[Label] = [
             column(col).label(alias)
             for col, alias in zip(colnames, aliases)
         ]
@@ -113,18 +118,20 @@ def select_by_column_names(
     return [item._asdict() for item in results]
 
 
-def execute_select_statement(engine: Engine, statement: str) -> list[dict]:
-    with Session(engine) as session:
+def execute_select_statement(
+    session: Session, statement: str
+) -> list[dict]:
+    with session:
         results = session.execute(text(statement))
 
         return [r._asdict() for r in results]
 
 
-def execute_sql_file(engine: Engine, file_path: str) -> None:
+def execute_sql_file(session: Session, file_path: str) -> None:
     sql_fp = pathlib.Path(file_path)
     stmt = sql_fp.read_text(encoding="utf-8")
 
-    with Session(engine) as session:
+    with session:
         session.execute(text(stmt))
         session.commit()
 
