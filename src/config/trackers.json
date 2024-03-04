@@ -13,10 +13,6 @@
             "parser": "JSONParser"
         },
         {
-            "url": "https://www.impisportswear.com.au/",
-            "parser": "none"
-        },
-        {
             "url": "https://jlathletics.com/",
             "parser": "HTMLSpuritParser"
         },
@@ -33,7 +29,7 @@
             "parser": "HTMLSwymParser"
         },
         {
-            "url": "https://musclenation.org/",
+            "url": "https://www.kozii.com/",
             "parser": "HTMLSwymParser"
         },
         {
@@ -43,6 +39,46 @@
         {
             "url": "https://www.volaresports.com/",
             "parser": "JSONParser"
+        },
+        {
+            "url": "https://www.twinsix.com/",
+            "parser": "JSONParser"
+        },
+        {
+            "url": "https://hyperfly.com/",
+            "parser": "JSONParser"
+        },
+        {
+            "url": "https://continuousflowbjj.com/",
+            "parser": "JSONParser"
+        },
+        {
+            "url": "https://jitsy.club/",
+            "parser": "HTMLBISParser"
+        },
+        {
+            "url": "https://engageind.com/",
+            "parser": "HTMLSasoParser"
+        },
+        {
+            "url": "https://au.tatamifightwear.com/",
+            "parser": "HTMLGeneralParser"
+        },
+        {
+            "url": "https://www.hayabusafight.com/",
+            "parser": "HTMLOptParser"
+        },
+        {
+            "url": "https://www.albinoandpreto.com/",
+            "parser": "HTMLProdParser"
+        },
+        {
+            "url": "https://shoyoroll.com/",
+            "parser": "HTMLProdParser"
+        },
+        {
+            "url": "https://mmafightstore.com.au/",
+            "parser": "HTMLCamoParser"
         }
     ]
 }
