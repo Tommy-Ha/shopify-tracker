@@ -2,21 +2,14 @@ from __future__ import annotations
 
 import re
 import json
-import urllib.parse
-import string
-import math
-import sys
-import pathlib
 
 import bs4
-import httpx
 
 from typing import NamedTuple
 from typing import Protocol
 from typing import runtime_checkable
 from typing import Any
 
-from src.config import settings
 
 
 REQUIRED_PRODUCT_COLUMNS = [
@@ -28,61 +21,16 @@ REQUIRED_PRODUCT_COLUMNS = [
     "variants",
 ]
 
-REQUIRED_VARIANT_COLUMNS = [
+_REQUIRED_VARIANT_COLUMNS = [
     "id",
     "title",
     "product_id",
 ]
 
-REQUIRED_INVENTORY_COLUMNS = [
+_REQUIRED_INVENTORY_COLUMNS = [
     "id",
     "inventory_quantity"
 ]
-
-
-class TrackerConfig(NamedTuple):
-    url: str
-    parser: str = "JSONParser"
-
-    @property
-    def base_url(self) -> str:
-        if self.url.endswith("/"):
-            return self.url.rstrip("/")
-        else:
-            return self.url
-
-    @property
-    def products_json_url(self) -> str:
-        return self.base_url + "/products.json"
-
-    @property
-    def products_url(self) -> str:
-        return self.base_url + "/products"
-
-    @property
-    def name(self) -> str:
-        parsed = urllib.parse.urlparse(url=self.base_url)
-        netloc_parts = parsed.netloc.split(".")
-        exclude_domains = ["www", "au"]
-
-        netloc_parts = [
-            n for n in netloc_parts
-            if n not in exclude_domains
-        ]
-
-        return netloc_parts[0]
-
-    @property
-    def sqlite_uri(self) -> str:
-        return f"sqlite:///{settings.SQLITE_DB_ROOT}/{self.name}.db"
-
-    @property
-    def parser_class(
-        self
-    ) -> type[HTMLParser]:
-        return getattr(
-            sys.modules["src.parser"], self.parser
-        )
 
 
 class Product(NamedTuple):
@@ -146,31 +94,6 @@ class SheetConfig(NamedTuple):
             + str(last_char)
             + str(self.height)
         )
-
-
-def load_tracker_configs() -> list[TrackerConfig]:
-    tracker_json_configs = pathlib.Path(
-        settings.TRACKERS_CONFIG_FILEPATH
-    )
-
-    with tracker_json_configs.open(mode="r", encoding="utf-8") as fp:
-        base_config = json.load(fp=fp)
-
-        return [
-            TrackerConfig(
-                url=tracker["url"],
-                parser=tracker["parser"]
-            )
-            for tracker in base_config["trackers"]
-        ]
-
-
-def get_config_by_name(
-    trackers: list[TrackerConfig], name: str
-) -> TrackerConfig | None:
-    for t in trackers:
-        if t.name == name:
-            return t
 
 
 def load_sheet_configs() -> list[SheetConfig]:

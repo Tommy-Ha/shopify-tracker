@@ -1,260 +1,110 @@
 from __future__ import annotations
 
-import asyncio
-import random
+import argparse
+import urllib.parse
+import pathlib
+import json
 
-import httpx
-import tenacity
+from typing import Sequence
+from typing import NamedTuple
 
 from src import headers
-from src import logger
-from src import parser
-from src.db import models
-from src.db import utils
+from src import parsers
 from src.config import settings
 
-logger.init_logger()
-custom_logger = logger.get_logger("tracker")
 
 HEADERS_HANDLER = headers.HeadersHandler()
 
 
-def custom_retry_callback(retry_state: tenacity.RetryCallState) -> None:
-    if retry_state.attempt_number < settings.MAX_RETRIES:
-        custom_logger.info(
-            msg=f"retrying: {retry_state.attempt_number} time(s)"
-        )
-    else:
-        custom_logger.warning(
-            msg=f"reached retries limit: {retry_state.attempt_number} time(s)"
-        )
+def get_url_base_name(url: str) -> str:
+    parsed = urllib.parse.urlparse(url=url)
+    netloc_parts = parsed.netloc.split(".")
+    exclude_domains = ["www", "au"]
+
+    netloc_parts = [
+        n for n in netloc_parts
+        if n not in exclude_domains
+    ]
+
+    return netloc_parts[0]
 
 
-def async_sleep_random(
-    fixed: int = 4,
-    min: int = 0,
-    max: int = 3
-) -> int:
-    delay = random.randint(a=min, b=max)
-    return fixed + delay
+class TrackerConfig(NamedTuple):
+    url: str
+    parser: str = "JSONParser"
+    sqlite_root: str = settings.SQLITE_DB_ROOT
 
-
-def response_has_no_products(data: dict) -> bool:
-    if len(data["products"]) == 0:
-        return True
-    else:
-        return False
-
-
-@tenacity.retry(
-    stop=tenacity.stop_after_attempt(
-        max_attempt_number=settings.MAX_RETRIES
-    ),
-    wait=(
-        tenacity.wait_fixed(settings.RETRY_SLEEP_DELAY)
-        + tenacity.wait_random_exponential(
-            multiplier=0.5,
-            max=60
-        )
-    ),
-    after=custom_retry_callback
-)
-async def async_request(
-    client: httpx.AsyncClient,
-    method: str,
-    url: str,
-    **kwargs
-) -> httpx.Response | None:
-
-    try:
-        response = await client.request(
-            method=method, url=url, **kwargs
-        )
-        response = response.raise_for_status()
-
-        if response is None:
-            custom_logger.warning(
-                msg=f"http request: emptry response {url}"
-            )
+    @property
+    def base_url(self) -> str:
+        if self.url.endswith("/"):
+            return self.url.rstrip("/")
         else:
-            custom_logger.info(
-                msg=f"http request ({response.status_code}): {method} {url} {kwargs}"
-            )
-            return response
+            return self.url
 
-    except httpx.HTTPStatusError as e:
-        custom_logger.warning(
-            msg=f"http request ({e.response.status_code}): {method} {url}",
-            extra={"url": url, "status_code": e.response.status_code}
-        )
-        if e.response.status_code == 404:
-            pass
+    @property
+    def products_json_url(self) -> str:
+        return self.base_url + "/products.json"
 
-        elif e.response.status_code == 430:
-            await asyncio.sleep(settings.ASYNC_SLEEP_DELAY)
-            pass
+    @property
+    def products_url(self) -> str:
+        return self.base_url + "/products"
 
-        else:
-            raise tenacity.TryAgain
+    @property
+    def name(self) -> str:
+        return get_url_base_name(self.url)
 
-    except httpx.ReadTimeout as e:
-        custom_logger.error(msg=f"failed with timeout: {url}")
-        raise tenacity.TryAgain
+    @property
+    def sqlite_uri(self) -> str:
+        return f"sqlite:///{settings.SQLITE_DB_ROOT}/{self.name}.db"
 
-    except httpx.RemoteProtocolError:
-        custom_logger.error(msg=f"server not response: {url}")
-        raise tenacity.TryAgain
+    @property
+    def parser_class(
+        self
+    ) -> type[parsers.HTMLParser | parsers.JSONParser]:
+        subclasses = parsers.HTMLParser.__subclasses__()
+        for s in subclasses:
+            if s.__name__ == self.parser:
+                return s
+            else:
+                continue
 
-    except httpx.UnsupportedProtocol:
-        custom_logger.error(msg=f"unsupported protocol: {url}")
-        raise tenacity.TryAgain
-
-
-class TrackerRunner:
-    def __init__(
-        self,
-        client: httpx.AsyncClient,
-        sem: asyncio.Semaphore,
-        tracker_config: parser.TrackerConfig
-    ) -> None:
-        self.client = client
-        self.sem = sem
-        self.config = tracker_config
-        self.engine = utils.get_engine(self.config.sqlite_uri)
-
-    async def proces_one(self, product: dict) -> None:
-        async with self.sem:
-            url = ""
-
-            if "JSON" in self.config.parser:
-                url = product["url"] + ".json" 
-            elif "HTML" in self.config.parser:
-                url = product["url"]
-
-            custom_headers = HEADERS_HANDLER.get_headers(
-                url=url
-            )
-
-            response = await async_request(
-                client=self.client,
-                method="GET",
-                url=url,
-                headers=custom_headers
-            )
-
-            values = []
-
-            if response is not None:
-
-                custom_parser = self.config.parser_class(
-                    response=response
-                )
-                values = custom_parser.parse()
-
-                utils.upsert_many(
-                    engine=self.engine,
-                    values=values,
-                    instance=models.ShopifyInventory
-                )
-
-            if self.sem.locked():
-                sleep_delay = async_sleep_random(
-                    fixed=settings.ASYNC_SLEEP_DELAY
-                )
-                await asyncio.sleep(sleep_delay)
-
-        return
-
-    async def process_many(self) -> None:
-        page_number = 1
-
-        while True:
-            params = {
-                "json": "true",
-                "limit": 250,
-                "page": page_number
-            }
-
-            sleep_delay = async_sleep_random(
-                fixed=settings.ASYNC_SLEEP_DELAY
-            )
-            await asyncio.sleep(sleep_delay)
-
-            response = await async_request(
-                client=self.client,
-                method="GET",
-                url=self.config.products_json_url,
-                params=params
-            )
-
-            assert response is not None
-
-            if response_has_no_products(response.json()):
-                break
-
-            pparser = parser.ShopifyProductsParser(
-                response=response.json(),
-                tracker_config=self.config
-            )
-            pparser.parse_products()
-
-            utils.upsert_many(
-                engine=self.engine,
-                values=pparser.products,
-                instance=models.ShopifyProduct
-            )
-
-            utils.upsert_many(
-                engine=self.engine,
-                values=pparser.variants,
-                instance=models.ShopifyVariant
-            )
-
-            page_number += 1
-
-    async def run(
-        self, skip_products: bool = False
-    ) -> None:
-
-        utils.init_database(
-            engine=self.engine, metadata=models.ShopifyBase.metadata
-        )
-
-        if not skip_products:
-            await self.process_many()
-
-        product_items = utils.select_by_column_names(
-            engine=self.engine,
-            table_name="product",
-            colnames=["id", "url"]
-        )
-
-        try:
-            tasks = [
-                asyncio.create_task(
-                    self.proces_one(product=p)
-                )
-                for p in product_items
-            ]
-
-            await asyncio.gather(*tasks)
-
-        except tenacity.RetryError:
-            pass
+        return parsers.JSONParser
 
 
-async def main() -> None:
-    configs = parser.load_tracker_configs()
-
-    SEM = asyncio.Semaphore(value=settings.MAX_ASYNC_WORKER)
-    CLIENT = httpx.AsyncClient()
-
-    tracker = TrackerRunner(
-        sem=SEM, client=CLIENT, tracker_config=configs[2]
+def load_tracker_configs() -> list[TrackerConfig]:
+    tracker_json_configs = pathlib.Path(
+        settings.TRACKERS_CONFIG_FILEPATH
     )
 
-    await tracker.run()
+    with tracker_json_configs.open(mode="r", encoding="utf-8") as fp:
+        base_config = json.load(fp=fp)
+
+        return [
+            TrackerConfig(
+                url=tracker["url"],
+                parser=tracker["parser"]
+            )
+            for tracker in base_config["trackers"]
+        ]
+
+
+def get_config_by_name(
+    trackers: list[TrackerConfig], name: str
+) -> TrackerConfig | None:
+    for t in trackers:
+        if t.name == name:
+            return t
+        else:
+            continue
+
+    return None
+
+
+def main(argv: Sequence[str] | None = None) -> int:
+    aparser = argparse.ArgumentParser()
+
+    return 0
 
 
 if __name__ == "__main__":
-    asyncio.run(main())
+    raise SystemExit(main())
