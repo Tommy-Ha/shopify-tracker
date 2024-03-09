@@ -55,7 +55,7 @@ class TrackerConfig(NamedTuple):
 
     @property
     def sqlite_uri(self) -> str:
-        return f"sqlite:///{settings.SQLITE_DB_ROOT}/{self.name}.db"
+        return f"sqlite:///{self.sqlite_root}/{self.name}.db"
 
     @property
     def parser_class(
