@@ -7,6 +7,33 @@ from sqlalchemy import Engine
 from src.config import settings
 from src.db import utils
 
+_COMBINED_INVENTORY_STMT = """
+WITH variant_tbl AS (
+    SELECT
+        p.title AS product_title,
+	p.product_type,
+        p.url AS product_url,
+        v.id,
+        v.title AS variant_title
+    FROM variant AS v
+    LEFT JOIN product AS p
+        ON p.id == v.product_id
+)
+
+SELECT
+    i.id,
+    i.updated_at,
+    vt.product_title,
+    vt.product_url,
+    vt.product_type,
+    i.variant_id,
+    vt.variant_title,
+    i.inventory_quantity
+FROM inventory AS i
+LEFT JOIN variant_tbl AS vt
+    ON i.variant_id = vt.id
+WHERE i.inventory_quantity > 0
+"""
 
 def calculate_item_sold_by_variants(
     group: pandas.DataFrame
@@ -42,7 +69,7 @@ def compute_inventory(
 
     inventories = utils.execute_select_statement(
         session=utils.LocalSession(),
-        statement=settings.COMBINED_INVENTORY_STMT
+        statement=_COMBINED_INVENTORY_STMT
     )
     inventory_data = pandas.DataFrame(data=inventories)
 
