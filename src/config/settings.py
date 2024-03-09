@@ -7,7 +7,7 @@ SQLITE_DB_ROOT = "data/sqlite"
 
 
 # async/sleep config
-MAX_ASYNC_WORKER = 50
+MAX_ASYNC_WORKER = 45
 ASYNC_SLEEP_DELAY = 4
 
 MAX_RETRIES = 10
