@@ -371,7 +371,7 @@ class HTMLOptParser(HTMLParser):
         ss = []
 
         for s in scripts:
-            if "var PRODUCT_JSON = fucntion() {" in s.text:
+            if "var PRODUCT_JSON = function() {" in s.text:
                 ss = s.text.split("\n")
             else:
                 continue
@@ -396,8 +396,8 @@ class HTMLOptParser(HTMLParser):
             for v in raw_variants["variants"]:
                 inventory.append(
                     {
-                        "variant_id": v.attrs["value"],
-                        "inventory_quantity": v.attrs["data-inventory-quantity"]
+                        "variant_id": v["id"],
+                        "inventory_quantity": v["inventory_quantity"]
                     }
                 )
 
