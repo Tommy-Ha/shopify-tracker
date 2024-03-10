@@ -94,7 +94,10 @@ class TrackerRunner:
                 extra={"url": url, "status_code": e.response.status_code}
             )
             if e.response.status_code == 404:
-                pass
+                return e.response
+
+            elif e.response.status_code == 301:
+                return e.response
 
             elif e.response.status_code == 430:
                 await asyncio.sleep(120)
@@ -138,14 +141,26 @@ class TrackerRunner:
             )
 
             if response is not None:
-                custom_parser = self.config.parser_class()
-                values = custom_parser.parse(markup=response.text)
+                if response.status_code != 200:
+                    value = {
+                        "id": product["id"],
+                        "status_code": response.status_code
+                    }
+                    utils.update_one(
+                        session=self.session(),
+                        value=value,
+                        instance=models.ShopifyProduct
+                    )
 
-                utils.upsert_many(
-                    session=self.session(),
-                    values=values,
-                    instance=models.ShopifyInventory
-                )
+                elif response.status_code == 200:
+                    custom_parser = self.config.parser_class()
+                    values = custom_parser.parse(markup=response.text)
+
+                    utils.upsert_many(
+                        session=self.session(),
+                        values=values,
+                        instance=models.ShopifyInventory
+                    )
 
     def _has_no_products(self, data: dict) -> bool:
         if len(data["products"]) == 0:
@@ -200,10 +215,14 @@ class TrackerRunner:
             page_number += 1
 
     def get_todos(self) -> list[dict]:
-        todos = utils.select_by_column_names(
+        stmt = """
+            SELECT id, url
+            FROM product
+            WHERE status_code == 200
+        """
+        todos = utils.execute_select_statement(
             session=self.session(),
-            table_name="product",
-            colnames=["id", "url"]
+            statement=stmt
         )
 
         return todos

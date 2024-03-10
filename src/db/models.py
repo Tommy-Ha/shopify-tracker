@@ -28,6 +28,7 @@ class ShopifyProduct(ShopifyBase):
     updated_at: Mapped[datetime.datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now()
     )
+    status_code: Mapped[int] = mapped_column(Integer, default=200)
 
 
 class ShopifyVariant(ShopifyBase):

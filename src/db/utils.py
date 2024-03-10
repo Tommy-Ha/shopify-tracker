@@ -1,4 +1,5 @@
 from __future__ import annotations
+from typing import Any
 
 from sqlalchemy.orm import Session
 from sqlalchemy.orm import sessionmaker
@@ -7,6 +8,7 @@ from sqlalchemy import Label
 from sqlalchemy import Engine, create_engine
 from sqlalchemy import select, table, column
 from sqlalchemy import text
+from sqlalchemy import update
 
 from sqlalchemy.dialects.sqlite import insert as sqlite_upsert
 
@@ -46,6 +48,16 @@ def insert_many(
         values_to_insert = [instance(**item) for item in values]
 
         session.add_all(values_to_insert)
+        session.commit()
+
+def update_one(
+    session: Session, value: dict[str, Any], instance
+) -> None:
+    with session:
+        session.execute(
+            update(instance),
+            [value]
+        )
         session.commit()
 
 
