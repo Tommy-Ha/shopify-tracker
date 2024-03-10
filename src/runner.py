@@ -315,6 +315,12 @@ def main(argv: Sequence[str] | None = None) -> int:
         help="run all trackers in configured order"
     )
     aparser.add_argument(
+        "--run-from",
+        action="store",
+        type=int,
+        help="run from <tracker_id> upto the last tracker in the list"
+    )
+    aparser.add_argument(
         "--run",
         action="store",
         type=int,
@@ -339,6 +345,11 @@ def main(argv: Sequence[str] | None = None) -> int:
     if args.run_all:
         logger.init_logger()
         asyncio.run(run_all_trackers(TRACKER_CONFIGS))
+
+    if args.run_from:
+        logger.init_logger()
+        configs = TRACKER_CONFIGS[args.run_from:]
+        asyncio.run(run_all_trackers(configs))
 
     if args.run:
         start = time.monotonic()
