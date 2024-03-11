@@ -141,7 +141,10 @@ class TrackerRunner:
             )
 
             if response is not None:
-                if response.status_code != 200:
+                if (
+                    response.status_code != 200
+                    and response.status_code != 430
+                ):
                     value = {
                         "id": product["id"],
                         "status_code": response.status_code
@@ -218,7 +221,7 @@ class TrackerRunner:
         stmt = """
             SELECT id, url
             FROM product
-            WHERE status_code == 200
+            WHERE status_code IN (200, 430);
         """
         todos = utils.execute_select_statement(
             session=self.session(),
