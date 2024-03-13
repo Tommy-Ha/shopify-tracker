@@ -29,6 +29,23 @@ def get_url_base_name(url: str) -> str:
     return netloc_parts[0]
 
 
+def filter_trackers_by_urls(
+    required_urls: list[str]
+) -> list[TrackerConfig]:
+    ts = []
+    trackers = load_tracker_configs()
+
+    for t in trackers:
+        for u in required_urls:
+            name = get_url_base_name(u)
+            if t.name == name:
+                ts.append(t)
+            else:
+                continue
+
+    return ts
+
+
 class TrackerConfig(NamedTuple):
     url: str
     parser: str = "JSONParser"
