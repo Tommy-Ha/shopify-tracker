@@ -7,3 +7,7 @@ pyarrow
 
 gspread
 SQLAlchemy
+
+dash
+dash-bootstrap-components
+dash-ag-grid
