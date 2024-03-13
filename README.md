@@ -2,11 +2,14 @@
 
 ## How to set up
 
-Clone this repository, for example to user's $HOME
+Clone this repository, for example to user's `$HOME`
 
 ```shell
-$ git clone https://github.com/longthp/shopify-tracker
+$ git clone https://github.com/longthp/shopify-tracker /home/<username>/shopify-tracker
+$ cd /home/<username>/shopify-tracker
 ```
+
+replace `<username>` with actual user's name (i.e. `echo $USER`).
 
 ### Installing venv with dependencies
 
@@ -22,12 +25,14 @@ $ venv/bin/python3 -m pip install -e .
 $ venv/bin/python3 migrate.py
 ```
 
+this will load the previously ran data files into `data/sqlite/*.db`.
+
 ## Run trackers
 
 There's a CLI at `venv/bin/st-runner.py`, run `venv/bin/st-runner --help` for more options:
 
 ```shell
-$ venv-test/bin/st-runner --help
+$ venv/bin/st-runner --help
 usage: st-runner [-h] [--list-trackers] [--run-all] [--run-from RUN_FROM] [--run RUN] [--test TEST]
 
 optional arguments:
@@ -38,6 +43,13 @@ optional arguments:
   --run-from RUN_FROM   run from <tracker_id> upto the last tracker in the list
   --run RUN             run tracker by id. use `--list-trackers` for a list of available trackers
   --test TEST, -t TEST  override SQLITE_DB_ROOT with specified path
+```
+
+### Test run
+
+```shell
+$ mkdir -p /tmp/foo
+$ venv/bin/st-runner --run 1 --test /tmp/foo
 ```
 
 ### Schedule trackers using `cron`
@@ -64,7 +76,7 @@ crontab -u <username> -e
 ## Launch the web interface
 
 ```shell
-$ /venv/bin/python3 -m src.app.main
+$ venv/bin/python3 -m src.app.main
 ```
 
-then open `http://127.0.0.1:8050` in web-browser on the same network.
+then open `http://127.0.0.1:8050` in a web-browser on the same network.
