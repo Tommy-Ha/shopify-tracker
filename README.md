@@ -19,7 +19,7 @@ $ venv/bin/python3 -m pip install -e .
 ### Populate SQLite database files
 
 ```shell
-$ venv/bin/python3 run.py
+$ venv/bin/python3 migrate.py
 ```
 
 ## Run trackers
