@@ -1,9 +1,22 @@
-# paths
-TRACKERS_CONFIG_FILEPATH = "src/config/trackers.json"
-SHEETS_CONFIG_FILEPATH = "src/config/sheets.json"
-LOGGER_CONFIG_FILEPATH = "src/config/logger.json"
+import pathlib
 
-SQLITE_DB_ROOT = "data/sqlite"
+
+def _mkdir(p: str) -> pathlib.Path:
+    dir_path = pathlib.Path(p)
+    dir_path.mkdir(parents=True, exist_ok=True)
+
+    return dir_path
+
+
+CONFIG_ROOT = _mkdir("src/config")
+LOG_ROOT = _mkdir("logs")
+SQLITE_DB_ROOT = _mkdir("data/sqlite")
+
+
+# paths
+TRACKERS_CONFIG_FILEPATH = CONFIG_ROOT / "trackers.json"
+SHEETS_CONFIG_FILEPATH = CONFIG_ROOT / "sheets.json"
+LOGGER_FILEPATH = LOG_ROOT / "tracker.log.jsonl"
 
 
 # async/sleep config
