@@ -5,11 +5,9 @@
 Clone this repository, for example to user's `$HOME`
 
 ```shell
-$ git clone https://github.com/longthp/shopify-tracker /home/<username>/shopify-tracker
-$ cd /home/<username>/shopify-tracker
+$ git clone https://github.com/longthp/shopify-tracker /home/$USER/shopify-tracker
+$ cd /home/$USER/shopify-tracker
 ```
-
-replace `<username>` with actual user's name (i.e. `echo $USER`).
 
 ### Installing venv with dependencies
 
@@ -55,8 +53,8 @@ $ venv/bin/st-runner --run 1 --test /tmp/foo
 ### Schedule trackers using `cron`
 
 ```shell
-# edit crontab for <username>
-crontab -u <username> -e
+# edit crontab for current user
+$ crontab -u $USER -e
 
 # add cron command(s)
 # e.g. run at 09:00 AM everyday
