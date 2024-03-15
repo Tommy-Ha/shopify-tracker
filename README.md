@@ -71,7 +71,55 @@ $ crontab -u $USER -e
 - sqlite db files are located at `data/sqlite`
 
 
-## Launch the web interface
+## Setup front-end interfaces
+
+### Google Sheets
+
+To use Google Sheets as front-end, setup the following requirements:
+
+1. `src/config/creds.json`
+- this is the credential file for Google Service Account
+- follow these steps from [gspread's guide](https://docs.gspread.org/en/latest/oauth2.html#for-bots-using-service-account)
+- copy and paste JSON credentials into `src/config/creds.json`
+
+2. `src/config/sheets.json`
+- this is used for defining spreadsheets (i.e. which spreadsheet should have which trackers)
+- for example, to setup 02 separate outputting sheets, each sheet has 02 trackers:
+  - first, create 02 Google Sheets with desired names
+  - second, populate `src/config/sheets.json` with the following contents:
+  ```json
+  {
+      "spreadsheets": [
+          {
+              "key_id": "19qbejOYgTCmwDNOLa5b5W6VLXtWSR38-AgxbQW0i0Ow",
+              "tracker_urls": [
+                  "https://776bc.com",
+                  "https://budgysmuggler.com.au",
+              ]
+          },
+          {
+              "key_id": "1dyfIRuIuBBqyulafWy2_eMLAg98EbwewNTdaemKgq30",
+              "tracker_urls": [
+                  "https://www.twinsix.com/",
+                  "https://hyperfly.com/",
+              ]
+          }
+      ]
+  }
+  ```
+
+then there's also a CLI script at `src/sheet.py` used for populating the configured sheets.
+
+We can also setup this script as another `cron`, by editing the `crontab`:
+
+```shell
+$ crontab -u $USER -e
+
+# this should run at every 60 minutes
+0 * * * * cd </path/to/cloned/repo> && venv/bin/st-sheet --run-all 2>&1 | logger -t shopify-sheets
+```
+
+### Dash Web Application
 
 ```shell
 $ venv/bin/python3 -m src.app.main
