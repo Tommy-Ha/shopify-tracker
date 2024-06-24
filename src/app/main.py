@@ -1,5 +1,5 @@
-from dash import Dash
-from dash import Input
+from dash import Dash,dash_table
+from dash import Input, State
 from dash import Output
 from dash import html
 from dash import dcc
@@ -10,7 +10,7 @@ from src import inventory
 from src import tracker
 from src.config import settings
 from src.db import utils
-
+from src import linkHandler
 
 # routes
 _ROUTE_ONE_TRACKER_URLS = [
@@ -45,12 +45,39 @@ routes = [
     {"id": 2, "href": "/boxing", "tracker_urls": _ROUTE_TWO_TRACKER_URLS},
 ]
 
+home_content = html.Div([
+    dbc.Row([
+        dbc.Col(
+            dcc.Input(id="input-link",type='text',placeholder="https://domain.com")
+        ),
+        dbc.Col(dcc.Dropdown(id="dropdown-link-type",options=['Swimming','Boxing'],value='Swimming'),),
+        dbc.Col([html.Button(id="add-link",children="Add"),html.Button(id="remove-link",children="Remove")]),
+    ], style={"padding":"5%"}),
+    dash_table.DataTable(
+        id='table-links',
+        columns=[
+            {'name': 'Link', 'id': 'link', 'deletable': True},
+        ],
+        data=[],
+        row_selectable='multi',
+        selected_rows=[],
+        style_table={'overflowX': 'auto'},
+        style_cell={'textAlign': 'left'},
+    
+    ),
+    html.Br(),
+    html.H4("Search by type:"),
+    dcc.Dropdown(id="dropdown-link-type-search",options=['Swimming','Boxing'],value='Swimming'),
+
+], 
+style={"width":"50%","margin":"auto"}
+)
 
 # navbar
 navbar_contents = [
     dbc.Col(
         dbc.NavbarBrand(
-            "Shopify Tracker", class_name="ms-2"
+            "Shopify Tracker", class_name="ms-2", href="/"
         )
     ),
     dbc.Col(
@@ -150,7 +177,8 @@ def _render_select(href: str) -> html.Div:
     return contents
 
 
-app = Dash(external_stylesheets=[dbc.themes.BOOTSTRAP])
+app = Dash(external_stylesheets=[dbc.themes.BOOTSTRAP],
+           prevent_initial_callbacks='initial_duplicate')
 app.title = "Shopify Tracker"
 app.layout = html.Div(
     children=[
@@ -159,6 +187,50 @@ app.layout = html.Div(
         page_content
     ]
 )
+
+@app.callback(
+        [Output('table-links','data'),
+        Output("input-link","value")],
+        [Input("add-link","n_clicks"),
+         State("dropdown-link-type","value"),
+         State("input-link","value")
+         ],         
+        prevent_initial_cal=True
+)
+def insert_link(n_clicks,type,link):
+    if n_clicks != None:
+        print(linkHandler.insert_link(link,type))
+    result=linkHandler.select_link_by_type()
+    return result,""
+
+@app.callback(
+    Output('table-links', 'data',allow_duplicate=True),
+    Input('remove-link', 'n_clicks'),
+    State('table-links', 'selected_rows') ,
+    State('table-links', 'data'),
+    prevent_initial_call=True
+)
+def delete_selected_row(n_clicks,selected_rows,rows):
+    if n_clicks>0 and selected_rows:
+        try:
+            for i in range(0,len(selected_rows)):
+                row_id=rows[selected_rows[i]]["link"]
+                linkHandler.remove_link(row_id)
+                rows.pop(selected_rows[0])
+        except Exception as e:
+            print(e)
+    return rows
+
+
+@app.callback(
+        Output("table-links","data",allow_duplicate=True),
+        Input("dropdown-link-type-search","value")
+)
+def search_by_type(value):
+    if value:
+        return linkHandler.select_link_by_type(value)
+    else:
+        return linkHandler.select_link_by_type()
 
 @app.callback(
     Output("page-content", "children"),
@@ -175,11 +247,12 @@ def render_page_content(pathname):
         )
 
     elif pathname == "/boxing":
-        return html.Div(
-            [
+        return html.Div([
                 _render_select(pathname)
-            ]
-        )
+            ])
+    
+    elif pathname == "/":
+        return home_content
 
     else:
         return html.Div(
