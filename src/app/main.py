@@ -5,12 +5,18 @@ from dash import html
 from dash import dcc
 import dash_ag_grid as dag
 import dash_bootstrap_components as dbc
+# from dash_auth import BasicAuth
+from flask import Flask
+from src.auth import views
+
+
 
 from src import inventory
 from src import tracker
 from src.config import settings
 from src.db import utils
-from src import linkHandler
+from src import link_handler as linkHandler
+from src.auth import user
 
 # routes
 _ROUTE_ONE_TRACKER_URLS = [
@@ -50,13 +56,14 @@ home_content = html.Div([
         dbc.Col(
             dcc.Input(id="input-link",type='text',placeholder="https://domain.com")
         ),
-        dbc.Col(dcc.Dropdown(id="dropdown-link-type",options=['Swimming','Boxing'],value='Swimming'),),
+        dbc.Col(dcc.Dropdown(id="dropdown-link-type"),),
         dbc.Col([html.Button(id="add-link",children="Add"),html.Button(id="remove-link",children="Remove")]),
     ], style={"padding":"5%"}),
     dash_table.DataTable(
         id='table-links',
         columns=[
-            {'name': 'Link', 'id': 'link', 'deletable': True},
+            {'name': 'Link', 'id': 'url', 'deletable': True},
+            {'name': 'Parser', 'id': 'parser', 'deletable': True},
         ],
         data=[],
         row_selectable='multi',
@@ -67,7 +74,7 @@ home_content = html.Div([
     ),
     html.Br(),
     html.H4("Search by type:"),
-    dcc.Dropdown(id="dropdown-link-type-search",options=['Swimming','Boxing'],value='Swimming'),
+    dcc.Dropdown(id="dropdown-link-type-search"),
 
 ], 
 style={"width":"50%","margin":"auto"}
@@ -178,7 +185,11 @@ def _render_select(href: str) -> html.Div:
 
 
 app = Dash(external_stylesheets=[dbc.themes.BOOTSTRAP],
+           server=views.server,
            prevent_initial_callbacks='initial_duplicate')
+app.config.suppress_callback_exceptions =True
+
+# BasicAuth(app,user.get_all_users())
 app.title = "Shopify Tracker"
 app.layout = html.Div(
     children=[
@@ -188,8 +199,19 @@ app.layout = html.Div(
     ]
 )
 
+
 @app.callback(
-        [Output('table-links','data'),
+        [Output("dropdown-link-type","options"),
+        Output("dropdown-link-type-search","options"),
+         ],
+         [Input("add-link","n_clicks")]
+)
+def load_parser(n_clicks):
+    data=linkHandler.get_all("parser")
+    return data,data
+
+@app.callback(
+        [Output('table-links','data',allow_duplicate=True),
         Output("input-link","value")],
         [Input("add-link","n_clicks"),
          State("dropdown-link-type","value"),
@@ -199,9 +221,9 @@ app.layout = html.Div(
 )
 def insert_link(n_clicks,type,link):
     if n_clicks != None:
-        print(linkHandler.insert_link(link,type))
-    result=linkHandler.select_link_by_type()
-    return result,""
+        print(linkHandler.add_link(link,type))
+    result=linkHandler.get_all()
+    return result["trackers"],""
 
 @app.callback(
     Output('table-links', 'data',allow_duplicate=True),
@@ -214,7 +236,7 @@ def delete_selected_row(n_clicks,selected_rows,rows):
     if n_clicks>0 and selected_rows:
         try:
             for i in range(0,len(selected_rows)):
-                row_id=rows[selected_rows[i]]["link"]
+                row_id=rows[selected_rows[i]]["url"]
                 linkHandler.remove_link(row_id)
                 rows.pop(selected_rows[0])
         except Exception as e:
@@ -228,9 +250,9 @@ def delete_selected_row(n_clicks,selected_rows,rows):
 )
 def search_by_type(value):
     if value:
-        return linkHandler.select_link_by_type(value)
+        return linkHandler.filter(value)
     else:
-        return linkHandler.select_link_by_type()
+        return linkHandler.get_all()["trackers"]
 
 @app.callback(
     Output("page-content", "children"),
