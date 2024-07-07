@@ -5,7 +5,7 @@ from dash import html
 from dash import dcc
 import dash_ag_grid as dag
 import dash_bootstrap_components as dbc
-# from dash_auth import BasicAuth
+import json
 from flask import Flask
 from src.auth import views
 
@@ -17,39 +17,6 @@ from src.config import settings
 from src.db import utils
 from src import link_handler as linkHandler
 from src.auth import user
-
-# routes
-_ROUTE_ONE_TRACKER_URLS = [
-    "https://776bc.com",
-    "https://budgysmuggler.com.au",
-    "https://www.slixaustralia.com.au/",
-    "https://jlathletics.com/",
-    "https://nimbleactivewear.com/",
-    "https://www.dharmabums.com.au/",
-    "https://au.ryderwear.com/",
-    "https://www.kozii.com/",
-    "https://2xu.com/",
-    "https://www.volaresports.com/"
-]
-
-_ROUTE_TWO_TRACKER_URLS = [
-    "https://www.twinsix.com/",
-    "https://hyperfly.com/",
-    "https://continuousflowbjj.com/",
-    "https://jitsy.club/",
-    "https://engageind.com/",
-    "https://au.tatamifightwear.com/",
-    "https://www.hayabusafight.com/",
-    "https://www.albinoandpreto.com/",
-    "https://shoyoroll.com/",
-    "https://mmafightstore.com.au/"
-]
-
-
-routes = [
-    {"id": 1, "href": "/swimming", "tracker_urls": _ROUTE_ONE_TRACKER_URLS},
-    {"id": 2, "href": "/boxing", "tracker_urls": _ROUTE_TWO_TRACKER_URLS},
-]
 
 home_content = html.Div([
     dbc.Row([
@@ -124,6 +91,15 @@ page_content = html.Div(id="page-content")
 
 
 def _render_select(href: str) -> html.Div:
+    
+    f= open(settings.TRACKERS_CONFIG_FILEPATH)
+    data_trackers=json.load(f)
+    size_tracker = len(data_trackers["trackers"])
+    size_per_route = round(size_tracker/2)
+    routes = [
+        {"id": 1, "href": "/swimming", "tracker_urls": [data_trackers["trackers"][i]["url"] for i in range(0,size_per_route)]},
+        {"id": 2, "href": "/boxing", "tracker_urls": [data_trackers["trackers"][i]["url"] for i in range(size_per_route,size_tracker)]},
+    ]
     tracker_urls, = [
         route["tracker_urls"]
         for route in routes
@@ -297,19 +273,6 @@ def render_page_content(pathname):
     Input("selected-tracker", "value")
 )
 def render_table(tracker_name: str):
-    engine = utils.get_engine(
-        url=f"sqlite:///{settings.SQLITE_DB_ROOT}/{tracker_name}.db"
-    )
-
-    df = inventory.compute_inventory(engine)
-
-    table_cols = [
-        "product_title",
-        "product_type",
-        "variant_title",
-        "initial_amount",
-        "item_sold"
-    ]
 
     columnDefs = [
         {"field": "product_title", "headerName": "Product Title"},
@@ -318,12 +281,29 @@ def render_table(tracker_name: str):
         {"field": "initial_amount", "headerName": "Initial Amount"},
         {"field": "item_sold", "headerName": "Item Sold"},
     ]
-    rowData = df[table_cols].to_dict(orient="records")
+    try:
+        engine = utils.get_engine(
+            url=f"sqlite:///{settings.SQLITE_DB_ROOT}/{tracker_name}.db"
+        )
 
-    first_updated = df["first_updated"].min()
-    last_updated = df["last_updated"].max()
+        df = inventory.compute_inventory(engine)
+    
+        table_cols = [
+                "product_title",
+                "product_type",
+                "variant_title",
+                "initial_amount",
+                "item_sold"
+            ]
+       
+        rowData = df[table_cols].to_dict(orient="records")
 
-    return columnDefs, rowData, first_updated, last_updated
+        first_updated = df["first_updated"].min()
+        last_updated = df["last_updated"].max()
+
+        return columnDefs, rowData, first_updated, last_updated
+    except Exception:
+        return columnDefs,[],"",""
 
 
 def main() -> int:
