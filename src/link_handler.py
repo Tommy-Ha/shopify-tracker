@@ -15,14 +15,18 @@ def get_all(type = None):
 
 def add_link(link :str,parser :str):
     pattern =r'^(https?:\/\/)?(www\.)?([a-zA-Z0-9-]+(\.[a-zA-Z0-9-]+)+)(\/[^\s]*)?$'
-    if re.match(pattern,link) and (type != None or type != ""):
+    if re.match(pattern,link) and parser != None:
 
         tracker_data = get_all()
-        tracker_data["trackers"].append({"url":f"{link}","parser":f"{parser}"})
-        with open(settings.TRACKERS_CONFIG_FILEPATH,'w') as file:
-            json.dump(tracker_data,file,indent=4)
+        if len(filter(link=link))==0:            
+            tracker_data["trackers"].append({"url":f"{link}","parser":f"{parser}"})
+            with open(settings.TRACKERS_CONFIG_FILEPATH,'w') as file:
+                json.dump(tracker_data,file,indent=4)
+                return "Add new link successful!"
+        else:
+            return "The link has existing at list below."
     else:
-        print("The link is not correct format")
+        return "The link is not correct format."
     
 
 def remove_link(link :str):
@@ -31,10 +35,13 @@ def remove_link(link :str):
     with open(settings.TRACKERS_CONFIG_FILEPATH,'w') as file:
         json.dump(data,file,indent=4)
 
-def filter(parser :str):
+def filter(parser=None,link=None):
     f= open(settings.TRACKERS_CONFIG_FILEPATH)
     data=json.load(f)
-    return [i for i in data["trackers"] if i["parser"] == parser]
+    if link:
+        return [i for i in data["trackers"] if i["url"].replace("https://","").replace("www.","") ==link.replace("https://","").replace("www.","")]
+    elif parser:
+        return [i for i in data["trackers"] if i["parser"] == parser]
 
 
 

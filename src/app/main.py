@@ -7,8 +7,7 @@ import dash_ag_grid as dag
 import dash_bootstrap_components as dbc
 import json
 from flask import Flask
-from src.auth import views
-
+import traceback
 
 
 from src import inventory
@@ -26,6 +25,12 @@ home_content = html.Div([
         dbc.Col(dcc.Dropdown(id="dropdown-link-type"),),
         dbc.Col([html.Button(id="add-link",children="Add"),html.Button(id="remove-link",children="Remove")]),
     ], style={"padding":"5%"}),
+    dbc.Row([
+         dbc.Col(
+            dcc.Input(id="custome-parser",type='text',placeholder="HTMLPOParser...")
+        ),
+        ]),
+    html.Div(id="noti-statut"),
     dash_table.DataTable(
         id='table-links',
         columns=[
@@ -161,7 +166,6 @@ def _render_select(href: str) -> html.Div:
 
 
 app = Dash(external_stylesheets=[dbc.themes.BOOTSTRAP],
-           server=views.server,
            prevent_initial_callbacks='initial_duplicate')
 app.config.suppress_callback_exceptions =True
 
@@ -184,22 +188,30 @@ app.layout = html.Div(
 )
 def load_parser(n_clicks):
     data=linkHandler.get_all("parser")
-    return data,data
+    data_insert = data
+    data_insert.insert(0,settings.CUSTOME_PARSER)
+    return data_insert,data
 
 @app.callback(
         [Output('table-links','data',allow_duplicate=True),
-        Output("input-link","value")],
+        Output("input-link","value"),
+        Output("noti-statut","children")],
         [Input("add-link","n_clicks"),
          State("dropdown-link-type","value"),
+         State("custome-parser","value"),
          State("input-link","value")
          ],         
         prevent_initial_cal=True
 )
-def insert_link(n_clicks,type,link):
+def insert_link(n_clicks,type,custome_parser,link):
+    parser = type
+    response=""
     if n_clicks != None:
-        print(linkHandler.add_link(link,type))
+        if type == settings.CUSTOME_PARSER:
+            parser = custome_parser
+        response = linkHandler.add_link(link,parser)
     result=linkHandler.get_all()
-    return result["trackers"],""
+    return result["trackers"],"",response
 
 @app.callback(
     Output('table-links', 'data',allow_duplicate=True),
@@ -209,15 +221,16 @@ def insert_link(n_clicks,type,link):
     prevent_initial_call=True
 )
 def delete_selected_row(n_clicks,selected_rows,rows):
+    selected_rows = sorted(selected_rows,reverse=True)
     if n_clicks>0 and selected_rows:
         try:
             for i in range(0,len(selected_rows)):
                 row_id=rows[selected_rows[i]]["url"]
                 linkHandler.remove_link(row_id)
-                rows.pop(selected_rows[0])
+            rows = linkHandler.get_all()
         except Exception as e:
             print(e)
-    return rows
+    return rows['trackers']
 
 
 @app.callback(
@@ -303,11 +316,20 @@ def render_table(tracker_name: str):
 
         return columnDefs, rowData, first_updated, last_updated
     except Exception:
+        traceback.print_exc()
         return columnDefs,[],"",""
 
 
+@app.callback(
+    Output("custome-parser","className"),
+    Input("dropdown-link-type","value"))
+def show_up_CUSTOME_PARSER(value):
+    if value==settings.CUSTOME_PARSER:
+        return "d-block"
+    else:
+        return "d-none"
 def main() -> int:
-    app.run()
+    app.run(debug=True)
 
     return 0
 

@@ -492,7 +492,29 @@ class HTMLCamoParser(HTMLParser):
 
         return inventory
 
-
+class HTMLPOParser(HTMLParser):
+    def filter(self,soup:bs4.BeautifulSoup):
+        dataJson = soup.select(selector="script[id='pre-order-helper']")
+        for line in dataJson.text.split(";"):
+            if "_POConfig.product = {" in line:
+                raw_variants = line.split(" = ")[-1]
+        variants=json.load(dataJson.text)
+        
+        return variants["variants"]
+    def parse(self, markup: str | bytes) -> list[dict]:
+        soup=bs4.BeautifulSoup(markup=markup, features="html.parser")
+        inventory: list[dict]=[]
+        
+        try:
+            variants = self.filter(soup)
+            for v in variants:
+                inventory.append({"variant_id":v["id"],"inventory_quantity":v["inventory_quantity"]})
+        except Exception:
+            inventory.append(
+                {"variant_id": 0, "inventory_quantity": 0}
+            )
+        return inventory
+    
 def main() -> None:
     # response = pathlib.Path("data/json/products.json").read_text(encoding="utf-8")
     # response = json.loads(response)
