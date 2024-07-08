@@ -169,7 +169,6 @@ app = Dash(external_stylesheets=[dbc.themes.BOOTSTRAP],
            prevent_initial_callbacks='initial_duplicate')
 app.config.suppress_callback_exceptions =True
 
-# BasicAuth(app,user.get_all_users())
 app.title = "Shopify Tracker"
 app.layout = html.Div(
     children=[
