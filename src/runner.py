@@ -17,7 +17,8 @@ from src import tracker
 from src.db import models
 from src.db import utils
 from src.config import settings
-
+import time
+import math
 
 TRACKER_CONFIGS = tracker.load_tracker_configs()
 
@@ -29,6 +30,23 @@ def async_sleep_random(
 ) -> int:
     delay = random.randint(a=min, b=max)
     return fixed + delay
+
+
+
+
+def get_hash(e:str):
+    u = -559038737
+    r = 1103547991
+
+    for n in range(len(e)):
+        t = ord(e[n])
+        u = (u ^ t) * 2654435761 & 0xFFFFFFFF
+        r = (r ^ t) * 1597334677 & 0xFFFFFFFF
+
+    u = ((u ^ (u >> 16)) * 2246822507 & 0xFFFFFFFF) ^ ((r ^ (r >> 13)) * 3266489909 & 0xFFFFFFFF)
+    r = ((r ^ (r >> 16)) * 2246822507 & 0xFFFFFFFF) ^ ((u ^ (u >> 13)) * 3266489909 & 0xFFFFFFFF)
+
+    return (4294967296 * (2097151 & r)) + (u & 0xFFFFFFFF)    
 
 
 class TrackerRunner:
@@ -122,7 +140,16 @@ class TrackerRunner:
             if "JSON" in self.config.parser:
                 url = product["url"] + ".json" 
             elif "HTML" in self.config.parser:
-                url = product["url"]
+                if "HTMLEasyStockParser" == self.config.parser:
+                    q = product["handle"]
+                    t=str(int(time.time()*1000))
+                    s='dM1xupB07XNx'
+                    hash_prod = get_hash(q+t+s)
+                    
+                    url = self.config.base_url+"/apps/easystock/?q={}&sign={}&timeh={}".format(q,hash_prod,t)
+                else:
+                    url = product["url"]
+            
 
             if sem.locked():
                 delay = async_sleep_random(
@@ -219,7 +246,7 @@ class TrackerRunner:
 
     def get_todos(self) -> list[dict]:
         stmt = """
-            SELECT id, url
+            SELECT id, url, handle
             FROM product
             WHERE status_code IN (200, 430);
         """
@@ -306,65 +333,61 @@ async def run_tracker_by_id(id: int) -> None:
 
 
 def main(argv: Sequence[str] | None = None) -> int:
-    # aparser = argparse.ArgumentParser()
-    # aparser.add_argument(
-    #     "--list-trackers", "--list", "-l",
-    #     action="store_true",
-    #     help="list all pre-configured trackers"
-    # )
-    # aparser.add_argument(
-    #     "--run-all",
-    #     action="store_true",
-    #     help="run all trackers in configured order"
-    # )
-    # aparser.add_argument(
-    #     "--run-from",
-    #     action="store",
-    #     type=int,
-    #     help="run from <tracker_id> upto the last tracker in the list"
-    # )
-    # aparser.add_argument(
-    #     "--run",
-    #     action="store",
-    #     type=int,
-    #     help="run tracker by id. use `--list-trackers` for a list of available trackers"
-    # )
-    # aparser.add_argument(
-    #     "--test", "-t",
-    #     action="store",
-    #     type=str,
-    #     help="run tracker(s) with a test SQLITE_DB_ROOT"
-    # )
+    aparser = argparse.ArgumentParser()
+    aparser.add_argument(
+        "--list-trackers", "--list", "-l",
+        action="store_true",
+        help="list all pre-configured trackers"
+    )
+    aparser.add_argument(
+        "--run-all",
+        action="store_true",
+        help="run all trackers in configured order"
+    )
+    aparser.add_argument(
+        "--run-from",
+        action="store",
+        type=int,
+        help="run from <tracker_id> upto the last tracker in the list"
+    )
+    aparser.add_argument(
+        "--run",
+        action="store",
+        type=int,
+        help="run tracker by id. use `--list-trackers` for a list of available trackers"
+    )
+    aparser.add_argument(
+        "--test", "-t",
+        action="store",
+        type=str,
+        help="run tracker(s) with a test SQLITE_DB_ROOT"
+    )
 
-    # args = aparser.parse_args(argv)
-    # if args.list_trackers:
-    #     for i, config in enumerate(TRACKER_CONFIGS):
-    #         print(f"| id: {i} | name: {config.name} | {config} |")
+    args = aparser.parse_args(argv)
+    if args.list_trackers:
+        for i, config in enumerate(TRACKER_CONFIGS):
+            print(f"| id: {i} | name: {config.name} | {config} |")
 
-    # if args.test is not None:
-    #     print(f"updated {settings.SQLITE_DB_ROOT} -> {args.test}")
-    #     settings.SQLITE_DB_ROOT = args.test
+    if args.test is not None:
+        print(f"updated {settings.SQLITE_DB_ROOT} -> {args.test}")
+        settings.SQLITE_DB_ROOT = args.test
 
-    # if args.run_all:
-    #     logger.init_logger()
-    #     asyncio.run(run_all_trackers(TRACKER_CONFIGS))
+    if args.run_all:
+        logger.init_logger()
+        asyncio.run(run_all_trackers(TRACKER_CONFIGS))
 
-    # if args.run_from:
-    #     logger.init_logger()
-    #     configs = TRACKER_CONFIGS[args.run_from:]
-    #     asyncio.run(run_all_trackers(configs))
+    if args.run_from:
+        logger.init_logger()
+        configs = TRACKER_CONFIGS[args.run_from:]
+        asyncio.run(run_all_trackers(configs))
 
-    # if args.run:
-    #     start = time.monotonic()
+    if args.run:
+        start = time.monotonic()
 
-    #     logger.init_logger()
-    #     asyncio.run(run_tracker_by_id(args.run))
+        logger.init_logger()
+        asyncio.run(run_tracker_by_id(args.run))
 
-    #     print(f"done in {time.monotonic() - start} second(s)")
-    start = time.monotonic()
-    logger.init_logger()
-    asyncio.run(run_tracker_by_id(1))
-    print(f"done in {time.monotonic() - start} second(s)")
+        print(f"done in {time.monotonic() - start} second(s)")
     return 0
 
 

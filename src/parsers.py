@@ -515,6 +515,15 @@ class HTMLPOParser(HTMLParser):
             )
         return inventory
     
+class HTMLEasyStockParser(HTMLParser):
+      
+    def parse(self, markup: str | bytes) -> list[dict]:
+      
+        product_include_quantity_json=json.loads(markup)
+        product_handle = list(product_include_quantity_json['products'].keys())[0]
+        variants = product_include_quantity_json['products'][product_handle]["variants"]
+        return [{"variant_id":i["id"],"inventory_quantity":i["quantity"]} for i in variants]
+    
 def main() -> None:
     # response = pathlib.Path("data/json/products.json").read_text(encoding="utf-8")
     # response = json.loads(response)
