@@ -1,5 +1,6 @@
 {
     "trackers": [
+
         {
             "url": "https://776bc.com",
             "parser": "HTMLGloboParser"
@@ -79,6 +80,26 @@
         {
             "url": "https://mmafightstore.com.au/",
             "parser": "HTMLCamoParser"
+        },
+        {
+            "url": "https://www.impisportswear.com.au/",
+            "parser": "HTMLEasyStockParser"
+        },
+        {
+            "url": "https://www.776bc.com.au/",
+            "parser": "HTMLPOParser"
+        },
+        {
+            "url": "https://squareblades.co.uk/",
+            "parser": "JSONParser"
+        },
+        {
+            "url": "https://www.vaikobi.com/",
+            "parser": "JSONParser"
+        },
+        {
+            "url": "https://regattasport.com/",
+            "parser": "HTMLShopifyBlockParser"
         }
     ]
 }
