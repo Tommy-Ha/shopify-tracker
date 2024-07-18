@@ -42,7 +42,7 @@ def init_spreadsheet(
 @dataclasses.dataclass
 class SheetDimension:
     columns: int = 26
-    rows: int = 1000
+    rows: int = 100000
     start_column: int = 1
     start_row: int = 1
 
@@ -309,7 +309,7 @@ class PivotTableCreatetor:
             params={"valueInputOption": "USER_ENTERED"},
             body={"values": [["Fist update", self.first_update],
                              ["Last update", self.last_update],
-                             ["Sheet Updated", time.strftime("%Y-%m-%d %H:%M:%S", time.gmtime())]                             
+                             ["Sheet Updated", time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())]                             
                              ]},
         )
     
