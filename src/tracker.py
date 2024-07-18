@@ -74,7 +74,8 @@ class TrackerConfig(NamedTuple):
 
     @property
     def sqlite_uri(self) -> str:
-        if pathlib.Path(f"/{self.sqlite_root}/{self.name}.db").exists() == False:            
+        db_path="data/sqlite/"+self.name+".db"
+        if pathlib.Path(db_path).exists() == False:            
             args = [
                 "sqlite3",
                 f"{self.name}.db",
