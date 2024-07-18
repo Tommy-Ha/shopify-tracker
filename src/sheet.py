@@ -149,9 +149,6 @@ class SheetWriter:
     def write(self) -> None:
         self.sheet.clear()
 
-        self.format()
-        self.format_banner()
-
         self.sheet.update(
             values=(
                 [self.data.columns.tolist()]
@@ -308,9 +305,12 @@ class PivotTableCreatetor:
 
     def format_banner(self):
         self.wb.values_update(
-            range="p_" + self.sheet_config.name + "!D1:E2",
+            range="p_" + self.sheet_config.name + "!D1:E3",
             params={"valueInputOption": "USER_ENTERED"},
-            body={"values": [["Fist update", self.first_update], ["Last update", self.last_update]]},
+            body={"values": [["Fist update", self.first_update],
+                             ["Last update", self.last_update],
+                             ["Sheet Updated", time.strftime("%Y-%m-%d %H:%M:%S", time.gmtime())]                             
+                             ]},
         )
     
 
