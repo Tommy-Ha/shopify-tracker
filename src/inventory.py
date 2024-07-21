@@ -10,7 +10,7 @@ from src.db import utils
 _COMBINED_INVENTORY_STMT = """
 WITH variant_tbl AS (
     SELECT
-        p.title AS product_title,
+        p.id as product_id,p.title AS product_title,
 	p.product_type,
         p.url AS product_url,
         v.id,
@@ -19,9 +19,9 @@ WITH variant_tbl AS (
     LEFT JOIN product AS p
         ON p.id == v.product_id
 )
-
 SELECT
     i.id,
+    vt.product_id,
     i.updated_at,
     vt.product_title,
     vt.product_url,
@@ -32,7 +32,7 @@ SELECT
 FROM inventory AS i
 LEFT JOIN variant_tbl AS vt
     ON i.variant_id = vt.id
-WHERE i.inventory_quantity > 0
+WHERE i.inventory_quantity > 0 and vt.product_id not null
 """
 
 def calculate_item_sold_by_variants(
@@ -115,14 +115,16 @@ def compute_inventory(
     )
 
     cols = [
-        "first_updated",
-        "last_updated",
+        "product_id",
         "product_title",
         # "product_url",
         "product_type",
+        "variant_id",
         "variant_title",
         "initial_amount",
-        "item_sold"
+        "item_sold",
+        "first_updated",
+        "last_updated"
     ]
 
     return df.loc[:, cols]

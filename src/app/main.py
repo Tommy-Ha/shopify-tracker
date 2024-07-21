@@ -5,58 +5,37 @@ from dash import html
 from dash import dcc
 import dash_ag_grid as dag
 import dash_bootstrap_components as dbc
+import json
+from flask import Flask
+import traceback
+
 
 from src import inventory
 from src import tracker
 from src.config import settings
 from src.db import utils
-from src import linkHandler
-
-# routes
-_ROUTE_ONE_TRACKER_URLS = [
-    "https://776bc.com",
-    "https://budgysmuggler.com.au",
-    "https://www.slixaustralia.com.au/",
-    "https://jlathletics.com/",
-    "https://nimbleactivewear.com/",
-    "https://www.dharmabums.com.au/",
-    "https://au.ryderwear.com/",
-    "https://www.kozii.com/",
-    "https://2xu.com/",
-    "https://www.volaresports.com/"
-]
-
-_ROUTE_TWO_TRACKER_URLS = [
-    "https://www.twinsix.com/",
-    "https://hyperfly.com/",
-    "https://continuousflowbjj.com/",
-    "https://jitsy.club/",
-    "https://engageind.com/",
-    "https://au.tatamifightwear.com/",
-    "https://www.hayabusafight.com/",
-    "https://www.albinoandpreto.com/",
-    "https://shoyoroll.com/",
-    "https://mmafightstore.com.au/"
-]
-
-
-routes = [
-    {"id": 1, "href": "/swimming", "tracker_urls": _ROUTE_ONE_TRACKER_URLS},
-    {"id": 2, "href": "/boxing", "tracker_urls": _ROUTE_TWO_TRACKER_URLS},
-]
+from src import link_handler as linkHandler
+from src.auth import user
 
 home_content = html.Div([
     dbc.Row([
         dbc.Col(
             dcc.Input(id="input-link",type='text',placeholder="https://domain.com")
         ),
-        dbc.Col(dcc.Dropdown(id="dropdown-link-type",options=['Swimming','Boxing'],value='Swimming'),),
+        dbc.Col(dcc.Dropdown(id="dropdown-link-type"),),
         dbc.Col([html.Button(id="add-link",children="Add"),html.Button(id="remove-link",children="Remove")]),
     ], style={"padding":"5%"}),
+    dbc.Row([
+         dbc.Col(
+            dcc.Input(id="custome-parser",type='text',placeholder="HTMLPOParser...")
+        ),
+        ]),
+    html.Div(id="noti-statut"),
     dash_table.DataTable(
         id='table-links',
         columns=[
-            {'name': 'Link', 'id': 'link', 'deletable': True},
+            {'name': 'Link', 'id': 'url', 'deletable': True},
+            {'name': 'Parser', 'id': 'parser', 'deletable': True},
         ],
         data=[],
         row_selectable='multi',
@@ -67,7 +46,7 @@ home_content = html.Div([
     ),
     html.Br(),
     html.H4("Search by type:"),
-    dcc.Dropdown(id="dropdown-link-type-search",options=['Swimming','Boxing'],value='Swimming'),
+    dcc.Dropdown(id="dropdown-link-type-search"),
 
 ], 
 style={"width":"50%","margin":"auto"}
@@ -117,6 +96,15 @@ page_content = html.Div(id="page-content")
 
 
 def _render_select(href: str) -> html.Div:
+    
+    f= open(settings.TRACKERS_CONFIG_FILEPATH)
+    data_trackers=json.load(f)
+    size_tracker = len(data_trackers["trackers"])
+    size_per_route = round(size_tracker/2)
+    routes = [
+        {"id": 1, "href": "/swimming", "tracker_urls": [data_trackers["trackers"][i]["url"] for i in range(0,size_per_route)]},
+        {"id": 2, "href": "/boxing", "tracker_urls": [data_trackers["trackers"][i]["url"] for i in range(size_per_route,size_tracker)]},
+    ]
     tracker_urls, = [
         route["tracker_urls"]
         for route in routes
@@ -179,6 +167,8 @@ def _render_select(href: str) -> html.Div:
 
 app = Dash(external_stylesheets=[dbc.themes.BOOTSTRAP],
            prevent_initial_callbacks='initial_duplicate')
+app.config.suppress_callback_exceptions =True
+
 app.title = "Shopify Tracker"
 app.layout = html.Div(
     children=[
@@ -188,20 +178,39 @@ app.layout = html.Div(
     ]
 )
 
+
 @app.callback(
-        [Output('table-links','data'),
-        Output("input-link","value")],
+        [Output("dropdown-link-type","options"),
+        Output("dropdown-link-type-search","options"),
+         ],
+         [Input("add-link","n_clicks")]
+)
+def load_parser(n_clicks):
+    data=linkHandler.get_all("parser")
+    data_insert = data
+    data_insert.insert(0,settings.CUSTOME_PARSER)
+    return data_insert,data
+
+@app.callback(
+        [Output('table-links','data',allow_duplicate=True),
+        Output("input-link","value"),
+        Output("noti-statut","children")],
         [Input("add-link","n_clicks"),
          State("dropdown-link-type","value"),
+         State("custome-parser","value"),
          State("input-link","value")
          ],         
         prevent_initial_cal=True
 )
-def insert_link(n_clicks,type,link):
+def insert_link(n_clicks,type,custome_parser,link):
+    parser = type
+    response=""
     if n_clicks != None:
-        print(linkHandler.insert_link(link,type))
-    result=linkHandler.select_link_by_type()
-    return result,""
+        if type == settings.CUSTOME_PARSER:
+            parser = custome_parser
+        response = linkHandler.add_link(link,parser)
+    result=linkHandler.get_all()
+    return result["trackers"],"",response
 
 @app.callback(
     Output('table-links', 'data',allow_duplicate=True),
@@ -211,15 +220,16 @@ def insert_link(n_clicks,type,link):
     prevent_initial_call=True
 )
 def delete_selected_row(n_clicks,selected_rows,rows):
+    selected_rows = sorted(selected_rows,reverse=True)
     if n_clicks>0 and selected_rows:
         try:
             for i in range(0,len(selected_rows)):
-                row_id=rows[selected_rows[i]]["link"]
+                row_id=rows[selected_rows[i]]["url"]
                 linkHandler.remove_link(row_id)
-                rows.pop(selected_rows[0])
+            rows = linkHandler.get_all()
         except Exception as e:
             print(e)
-    return rows
+    return rows['trackers']
 
 
 @app.callback(
@@ -228,9 +238,9 @@ def delete_selected_row(n_clicks,selected_rows,rows):
 )
 def search_by_type(value):
     if value:
-        return linkHandler.select_link_by_type(value)
+        return linkHandler.filter(value)
     else:
-        return linkHandler.select_link_by_type()
+        return linkHandler.get_all()["trackers"]
 
 @app.callback(
     Output("page-content", "children"),
@@ -275,19 +285,6 @@ def render_page_content(pathname):
     Input("selected-tracker", "value")
 )
 def render_table(tracker_name: str):
-    engine = utils.get_engine(
-        url=f"sqlite:///{settings.SQLITE_DB_ROOT}/{tracker_name}.db"
-    )
-
-    df = inventory.compute_inventory(engine)
-
-    table_cols = [
-        "product_title",
-        "product_type",
-        "variant_title",
-        "initial_amount",
-        "item_sold"
-    ]
 
     columnDefs = [
         {"field": "product_title", "headerName": "Product Title"},
@@ -296,16 +293,42 @@ def render_table(tracker_name: str):
         {"field": "initial_amount", "headerName": "Initial Amount"},
         {"field": "item_sold", "headerName": "Item Sold"},
     ]
-    rowData = df[table_cols].to_dict(orient="records")
+    try:
+        engine = utils.get_engine(
+            url=f"sqlite:///{settings.SQLITE_DB_ROOT}/{tracker_name}.db"
+        )
 
-    first_updated = df["first_updated"].min()
-    last_updated = df["last_updated"].max()
+        df = inventory.compute_inventory(engine)
+    
+        table_cols = [
+                "product_title",
+                "product_type",
+                "variant_title",
+                "initial_amount",
+                "item_sold"
+            ]
+       
+        rowData = df[table_cols].to_dict(orient="records")
 
-    return columnDefs, rowData, first_updated, last_updated
+        first_updated = df["first_updated"].min()
+        last_updated = df["last_updated"].max()
+
+        return columnDefs, rowData, first_updated, last_updated
+    except Exception:
+        traceback.print_exc()
+        return columnDefs,[],"",""
 
 
+@app.callback(
+    Output("custome-parser","className"),
+    Input("dropdown-link-type","value"))
+def show_up_CUSTOME_PARSER(value):
+    if value==settings.CUSTOME_PARSER:
+        return "d-block"
+    else:
+        return "d-none"
 def main() -> int:
-    app.run()
+    app.run(debug=True)
 
     return 0
 

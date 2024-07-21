@@ -17,7 +17,8 @@ from src import tracker
 from src.db import models
 from src.db import utils
 from src.config import settings
-
+import time
+import math
 
 TRACKER_CONFIGS = tracker.load_tracker_configs()
 
@@ -29,6 +30,23 @@ def async_sleep_random(
 ) -> int:
     delay = random.randint(a=min, b=max)
     return fixed + delay
+
+
+
+
+def get_hash(e:str):
+    u = -559038737
+    r = 1103547991
+
+    for n in range(len(e)):
+        t = ord(e[n])
+        u = (u ^ t) * 2654435761 & 0xFFFFFFFF
+        r = (r ^ t) * 1597334677 & 0xFFFFFFFF
+
+    u = ((u ^ (u >> 16)) * 2246822507 & 0xFFFFFFFF) ^ ((r ^ (r >> 13)) * 3266489909 & 0xFFFFFFFF)
+    r = ((r ^ (r >> 16)) * 2246822507 & 0xFFFFFFFF) ^ ((u ^ (u >> 13)) * 3266489909 & 0xFFFFFFFF)
+
+    return (4294967296 * (2097151 & r)) + (u & 0xFFFFFFFF)    
 
 
 class TrackerRunner:
@@ -122,7 +140,16 @@ class TrackerRunner:
             if "JSON" in self.config.parser:
                 url = product["url"] + ".json" 
             elif "HTML" in self.config.parser:
-                url = product["url"]
+                if "HTMLEasyStockParser" == self.config.parser:
+                    q = product["handle"]
+                    t=str(int(time.time()*1000))
+                    s='dM1xupB07XNx'
+                    hash_prod = get_hash(q+t+s)
+                    
+                    url = self.config.base_url+"/apps/easystock/?q={}&sign={}&timeh={}".format(q,hash_prod,t)
+                else:
+                    url = product["url"]
+            
 
             if sem.locked():
                 delay = async_sleep_random(
@@ -219,7 +246,7 @@ class TrackerRunner:
 
     def get_todos(self) -> list[dict]:
         stmt = """
-            SELECT id, url
+            SELECT id, url, handle
             FROM product
             WHERE status_code IN (200, 430);
         """
@@ -361,7 +388,6 @@ def main(argv: Sequence[str] | None = None) -> int:
         asyncio.run(run_tracker_by_id(args.run))
 
         print(f"done in {time.monotonic() - start} second(s)")
-
     return 0
 
 

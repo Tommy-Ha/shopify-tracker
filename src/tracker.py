@@ -11,6 +11,8 @@ from typing import NamedTuple
 from src import headers
 from src import parsers
 from src.config import settings
+import pathlib
+import subprocess
 
 
 HEADERS_HANDLER = headers.HeadersHandler()
@@ -72,6 +74,20 @@ class TrackerConfig(NamedTuple):
 
     @property
     def sqlite_uri(self) -> str:
+        db_path="data/sqlite/"+self.name+".db"
+        if pathlib.Path(db_path).exists() == False:            
+            args = [
+                "sqlite3",
+                f"{self.name}.db",
+                ".databases"
+            ]
+            subprocess.run(args)
+            read_sql_agrs=[
+                "sqlite3",
+                f"{self.sqlite_root}/baseSQL.sql",
+                f".read "
+            ]
+            subprocess.run(read_sql_agrs)
         return f"sqlite:///{self.sqlite_root}/{self.name}.db"
 
     @property

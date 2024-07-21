@@ -30,7 +30,7 @@ def init_spreadsheet(
     config: SpreadSheetConfig
 ) -> Spreadsheet:
     client = gspread.service_account(
-        filename=pathlib.Path("creds/google-sheet-api.json").absolute(),
+        filename=pathlib.Path("src/config/creds.json").absolute(),
     )
 
     wb = client.open_by_key(key=config.key_id)
@@ -42,7 +42,7 @@ def init_spreadsheet(
 @dataclasses.dataclass
 class SheetDimension:
     columns: int = 26
-    rows: int = 1000
+    rows: int = 100000
     start_column: int = 1
     start_row: int = 1
 
@@ -146,70 +146,8 @@ class SheetWriter:
             )
             return ws
 
-    def format_banner(self) -> None:
-        logo_range = SheetDimension(
-            rows=2,
-            columns=0,
-            start_column=3
-        )
-        self.sheet.update_acell(
-            label="C1",
-            value=self.config.name.upper()
-        )
-        self.sheet.merge_cells(
-            name=logo_range.range,
-            merge_type="MERGE_COLUMNS"
-        )
-        self.sheet.format(
-            ranges=logo_range.range,
-            format={
-                "horizontalAlignment": "CENTER",
-                "verticalAlignment": "MIDDLE",
-                "textFormat": {
-                  "foregroundColor": {
-                    "red": 0,
-                    "green": 0,
-                    "blue": 0
-                  },
-                  "fontSize": 20,
-                  "bold": True
-                }
-            }
-        )
-        self.sheet.hide_columns(
-            start=0,
-            end=2
-        )
-        self.sheet.update(
-            values=[
-                [
-                    "First Updated:",
-                    self.data["first_updated"].min()
-                ],
-                [
-                    "Last Updated:",
-                    self.data["last_updated"].max()
-                ]
-            ],
-            range_name="D1:E2"
-        )
-
-    def format(self) -> None:
-        self.config.dimension.columns = len(self.data.columns)
-        self.config.dimension.rows = len(self.data)
-        self.config.dimension.start_row = 3
-
-        self.sheet.set_basic_filter(
-            name=self.config.dimension.range
-        )
-        self.sheet.freeze(rows=3)
-        self.sheet.hide_gridlines()
-
     def write(self) -> None:
         self.sheet.clear()
-
-        self.format()
-        self.format_banner()
 
         self.sheet.update(
             values=(
@@ -224,6 +162,157 @@ class SheetWriter:
             msg=f"done populating {self.config.name} with {len(self.data)} rows"
         )
 
+
+class PivotTableCreatetor:
+    def __init__(self, first_update,last_update, wb: Spreadsheet, sheet_config: SheetConfig) -> None:
+        self.first_update = first_update
+        self.last_update = last_update
+        self.wb = wb
+        self.sheet_config = sheet_config
+
+    def get_sheet(self, name=None):
+        try:
+            if name:
+                return self.wb.worksheet(name)
+            return self.wb.worksheet(self.sheet_config.name)
+        except Exception:
+            return None
+
+    def create_new_sheet(self):
+        new_sheet_name = "p_" + self.sheet_config.name
+        if not self.get_sheet(new_sheet_name):
+            body = {
+                "requests": [{"addSheet": {"properties": {"title": new_sheet_name}}}]
+            }
+            response = self.wb.batch_update(body=body)
+            return response["replies"][0]["addSheet"]["properties"]["sheetId"]
+        return self.wb.worksheet(new_sheet_name).id
+
+    def write(self):
+
+        sheet_id = self.create_new_sheet()
+        source_sheet_id = self.get_sheet().id
+        if sheet_id:
+            body = {
+                "requests": [
+                    {
+                        "updateCells": {
+                            "rows": [
+                                {
+                                    "values": [
+                                        {
+                                            "pivotTable": {
+                                                "source": {
+                                                    "sheetId": source_sheet_id,
+                                                    "startRowIndex": 0,
+                                                    "startColumnIndex": 0,
+                                                    "endRowIndex": 1000,
+                                                    "endColumnIndex": 7,
+                                                },
+                                                "rows": [
+                                                    {
+                                                        "sourceColumnOffset": 0,
+                                                        "showTotals": True,
+                                                        "sortOrder": "DESCENDING",
+                                                        "valueBucket": {},
+                                                    },
+                                                    {
+                                                        "sourceColumnOffset": 1,
+                                                        "showTotals": True,
+                                                        "sortOrder": "DESCENDING",
+                                                        "valueBucket": {},
+                                                    },
+                                                    {
+                                                        "sourceColumnOffset": 3,
+                                                        "showTotals": False,
+                                                        "sortOrder": "DESCENDING",
+                                                        "valueBucket": {},
+                                                    },
+                                                    {
+                                                        "sourceColumnOffset": 4,
+                                                        "showTotals": False,
+                                                        "sortOrder": "DESCENDING",
+                                                        "valueBucket": {},
+                                                    },
+                                                ],
+                                                "values": [
+                                                    {
+                                                        "summarizeFunction": "SUM",
+                                                        "sourceColumnOffset": 5,
+                                                    },
+                                                    {
+                                                        "summarizeFunction": "SUM",
+                                                        "sourceColumnOffset": 6,
+                                                    },
+                                                ],
+                                                "valueLayout": "HORIZONTAL",
+                                            }
+                                        }
+                                    ]
+                                }
+                            ],
+                            "start": {
+                                "sheetId": sheet_id,
+                                "rowIndex": 3,
+                                "columnIndex": 0,
+                            },
+                            "fields": "pivotTable",
+                        }
+                    },
+                    {
+                        "updateCells": {
+                            "range": {
+                                "sheetId": sheet_id,
+                                "startRowIndex": 0,
+                                "startColumnIndex": 0,
+                                "endRowIndex": 1,
+                                "endColumnIndex": 1,
+                            },
+                            "rows": [
+                                {
+                                    "values": [
+                                        {"userEnteredValue": {"stringValue": self.sheet_config.name}}                                       
+                                    ]
+                                }
+                            ],
+                            "fields": "userEnteredValue",
+                        }
+                    },
+                    {
+                        "repeatCell": {
+                            "range": {
+                                "sheetId": sheet_id,
+                                "startRowIndex": 0,
+                                "startColumnIndex": 0,
+                                "endRowIndex": 1,
+                                "endColumnIndex": 1,
+                            },
+                            "cell": {
+                                "userEnteredFormat": {
+                                    "textFormat": {
+                                        "fontSize": 24 
+                                    }
+                                }
+                            },
+                            "fields": "userEnteredFormat.textFormat.fontSize",
+                        }
+                    },
+                ]
+            }
+            self.wb.batch_update(body=body)
+            self.format_banner()
+            self.wb.worksheet(self.sheet_config.name).hide()        
+
+    def format_banner(self):
+        self.wb.values_update(
+            range="p_" + self.sheet_config.name + "!D1:E3",
+            params={"valueInputOption": "USER_ENTERED"},
+            body={"values": [["Fist update", self.first_update],
+                             ["Last update", self.last_update],
+                             ["Sheet Updated", time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())]                             
+                             ]},
+        )
+    
 
 def run_all_sheets(configs: list[SpreadSheetConfig]) -> None:
     for config in configs:
@@ -244,6 +333,13 @@ def run_all_sheets(configs: list[SpreadSheetConfig]) -> None:
                 )
                 writer.write()
                 time.sleep(6)
+                pivot_table = PivotTableCreatetor(
+                    first_update=data["first_updated"].min(),
+                    last_update=data["last_updated"].max(),
+                    sheet_config=sheet_config,
+                    wb=wb
+                )
+                pivot_table.write()
 
             except Exception as e:
                 print(e)

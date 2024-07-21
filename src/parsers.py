@@ -492,7 +492,58 @@ class HTMLCamoParser(HTMLParser):
 
         return inventory
 
-
+class HTMLPOParser(HTMLParser):
+    def filter(self,soup:bs4.BeautifulSoup):
+        dataJson = soup.select(selector="script[id='pre-order-helper']")
+        for line in dataJson.text.split(";"):
+            if "_POConfig.product = {" in line:
+                raw_variants = line.split(" = ")[-1]
+        variants=json.load(dataJson.text)
+        
+        return variants["variants"]
+    def parse(self, markup: str | bytes) -> list[dict]:
+        soup=bs4.BeautifulSoup(markup=markup, features="html.parser")
+        inventory: list[dict]=[]
+        
+        try:
+            variants = self.filter(soup)
+            for v in variants:
+                inventory.append({"variant_id":v["id"],"inventory_quantity":v["inventory_quantity"]})
+        except Exception:
+            inventory.append(
+                {"variant_id": 0, "inventory_quantity": 0}
+            )
+        return inventory
+    
+class HTMLEasyStockParser(HTMLParser):
+      
+    def parse(self, markup: str | bytes) -> list[dict]:
+      
+        product_include_quantity_json=json.loads(markup)
+        product_handle = list(product_include_quantity_json['products'].keys())[0]
+        variants = product_include_quantity_json['products'][product_handle]["variants"]
+        return [{"variant_id":i["id"],"inventory_quantity":i["quantity"]} for i in variants]
+    
+    
+class HTMLShopifyBlockParser(HTMLParser):
+    def parse(self, markup: str | bytes) -> list[dict]:
+        inventory: list[dict]=[]
+        soup = bs4.BeautifulSoup(markup=markup, features="html.parser")
+        x=soup.find("div",{"id":"shopify-block-16987187365865460165"})
+        string = x.select(selector="script")[0].text
+        patern = r"preOrderProduct.variants.push\({+\s+.+\s+.+\s+}\)"
+        list_machted=re.findall(patern,string)
+        for j in list_machted:
+            variant_detail = json.loads(j.replace("inventory_quantity",'"inventory_quantity"')
+                    .replace("...",'"detail":')
+                    .replace("preOrderProduct.variants.push(","")
+                    .replace("})","}")
+                    )     
+        inventory.append(
+            {"variant_id":variant_detail["detail"]["id"],"inventory_quantity":variant_detail["inventory_quantity"]}
+        )   
+        return inventory
+    
 def main() -> None:
     # response = pathlib.Path("data/json/products.json").read_text(encoding="utf-8")
     # response = json.loads(response)
