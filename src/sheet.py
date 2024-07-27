@@ -214,25 +214,33 @@ class PivotTableCreatetor:
                                                         "sourceColumnOffset": 0,
                                                         "showTotals": True,
                                                         "sortOrder": "DESCENDING",
-                                                        "valueBucket": {},
+                                                        "valueBucket": {
+                                                            "valuesIndex": 1
+                                                        },
                                                     },
                                                     {
                                                         "sourceColumnOffset": 1,
                                                         "showTotals": True,
                                                         "sortOrder": "DESCENDING",
-                                                        "valueBucket": {},
+                                                        "valueBucket": {
+                                                            "valuesIndex": 1
+                                                        },
                                                     },
                                                     {
                                                         "sourceColumnOffset": 3,
                                                         "showTotals": False,
                                                         "sortOrder": "DESCENDING",
-                                                        "valueBucket": {},
+                                                        "valueBucket": {
+                                                            "valuesIndex": 1
+                                                        },
                                                     },
                                                     {
                                                         "sourceColumnOffset": 4,
                                                         "showTotals": False,
                                                         "sortOrder": "DESCENDING",
-                                                        "valueBucket": {},
+                                                        "valueBucket": {
+                                                            "valuesIndex": 1
+                                                        },
                                                     },
                                                 ],
                                                 "values": [
@@ -363,6 +371,14 @@ def run_sheets(config: SpreadSheetConfig) -> None:
                 sheet_config=sheet_config
             )
             writer.write()
+            time.sleep(6)
+            pivot_table = PivotTableCreatetor(
+                first_update=data["first_updated"].min(),
+                last_update=data["last_updated"].max(),
+                sheet_config=sheet_config,
+                wb=wb
+            )
+            pivot_table.write()
 
         except Exception as e:
             print(e)
