@@ -36,6 +36,7 @@ home_content = html.Div([
         columns=[
             {'name': 'Link', 'id': 'url', 'deletable': True},
             {'name': 'Parser', 'id': 'parser', 'deletable': True},
+            {'name': 'Sheet ID', 'id': 'sheet_link', 'deletable': True},
         ],
         data=[],
         row_selectable='multi',
@@ -64,7 +65,7 @@ navbar_contents = [
             [
                 dbc.NavLink(
                     "Swimming", href="/swimming", active="partial",
-                    external_link=False
+                    external_link=False 
                 ),
                 dbc.NavLink(
                     "Boxing", href="/boxing", active="partial",

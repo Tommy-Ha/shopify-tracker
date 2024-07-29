@@ -131,6 +131,8 @@ class TrackerRunner:
         except httpx.RemoteProtocolError:
             self.llogger.error(msg=f"server not response: {url}")
             raise tenacity.TryAgain
+        except Exception:
+            self.llogger.error(msg=f"server not response: {url}")
 
     async def proces_one(
         self, product: dict, sem: asyncio.Semaphore
@@ -220,7 +222,8 @@ class TrackerRunner:
                 params=params
             )
 
-            assert response is not None
+            if response is None:
+                break
 
             if self._has_no_products(response.json()):
                 break
