@@ -41,3 +41,5 @@ SHARED_HEADERS = {
 }
 
 CUSTOME_PARSER = "Custome Paser"
+
+CUSTOME_MAIL=["mail1@gmail.com","mail1@gmail.com"]

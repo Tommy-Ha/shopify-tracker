@@ -91,7 +91,7 @@ class SpreadSheetConfig:
     ) -> list[SheetConfig]:
         sheet_configs = []
         for i, url in enumerate(tracker_urls, start=1):
-            name = tracker.get_url_base_name(url)
+            name = url.replace("https://","").replace("www.","")
             sheet_configs.append(
                 SheetConfig(name=name, position=i)
             )
