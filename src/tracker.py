@@ -71,6 +71,10 @@ class TrackerConfig(NamedTuple):
     @property
     def name(self) -> str:
         return get_url_base_name(self.url)
+    
+    @property
+    def db_name(self) -> str:
+        return self.url.replace("https://","").replace("www.","")
 
     @property
     def sqlite_uri(self) -> str:
@@ -78,7 +82,7 @@ class TrackerConfig(NamedTuple):
         if pathlib.Path(db_path).exists() == False:            
             args = [
                 "sqlite3",
-                f"{self.name}.db",
+                f"{self.db_name}.db",
                 ".databases"
             ]
             subprocess.run(args)
@@ -88,7 +92,7 @@ class TrackerConfig(NamedTuple):
                 f".read "
             ]
             subprocess.run(read_sql_agrs)
-        return f"sqlite:///{self.sqlite_root}/{self.name}.db"
+        return f"sqlite:///{self.sqlite_root}/{self.db_name}.db"
 
     @property
     def parser_class(
